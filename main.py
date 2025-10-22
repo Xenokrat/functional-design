@@ -45,74 +45,18 @@ class BoardState:
     board: Board
     score: int
 
-
-class Game:
-    SYMBOLS = ["A", "B", "C", "D", "E", "F"]
-
-    @staticmethod
-    def draw(board: Board):
-        print("   0 1 2 3 4 5 6 7")
-        for i in range(8):
-            print(i, " ", end="")
-            for j in range(8):
-                print(board.cells[i][j].symbol, end=" ")
-            print()
-        print()
-
-    @staticmethod
-    def clone_board(board: Board) -> Board:
-        b = Board(board.size)
-        for i in range(board.size):
-            for j in range(board.size):
-                b.cells[i][j] = board.cells[i][j]
-        return b
-
-    @staticmethod
-    def read_move(board_state: BoardState):
-        inp = input("> ")
-        if inp == "q":
-            sys.exit(0)
-
-        board = Game.clone_board(board_state.board)
-        coords: list[str] = inp.split(" ")
-        x = int(coords[1])
-        y = int(coords[0])
-        x1 = int(coords[3])
-        y1 = int(coords[2])
-        e: Element = board.cells[x][y]
-        board.cells[x][y] = board.cells[x1][y1]
-        board.cells[x1][y1] = e
-
-        return BoardState(board, board_state.score)
-
-    @classmethod
-    def initialize_game(cls) -> BoardState:
-        # 1. Создать новую "Доску"
-        # 2. Заполнить доску случайными элементами из класса Game
-        # 3. Создать новый объект BoardState,
-        #     содержащий созданную доску из п.2 со значением score = 0
-        # 4. Вернуть объект BoardState
-        board = Board(
-            size=8,
-            cells=[
-                [Element(random.choice(cls.SYMBOLS)) for _ in range(8)]
-                for _ in range(8)
-            ],
-        )
-        return BoardState(board=board, score=0)
-
-    @classmethod
-    def process_cascade(cls, board_state: BoardState) -> BoardState:
-        matches = cls.find_matches(board_state.board)
+    def process_cascade(self, symbols) -> 'BoardState':
+        matches = self.find_matches(self.board)
         if not matches:
-            return board_state
+            return self
 
-        new_state1 = cls.remove_matches(board_state, matches)
-        new_state2 = cls.fill_empty_spaces(new_state1)
-        return cls.process_cascade(new_state2)
+        return (
+            self
+            .remove_matches(matches)
+            .fill_empty_spaces(symbols)
+            .process_cascade(symbols)
+        )
 
-
-    @classmethod
     def find_matches(cls, board: Board) -> list[Match]:
         matches: list[Match] = []
 
@@ -205,29 +149,28 @@ class Game:
         if length >= 3:
             matches.append(Match(direction, row, col, length))
 
-    @classmethod
     def remove_matches(
-        cls, current_state: BoardState, matches: list[Match]
-    ) -> BoardState:
+        self, matches: list[Match]
+    ) -> 'BoardState':
         if not matches:
-            return current_state
+            return self
 
         # 1. Mark cells to delete
-        marked_cells: list[list[Element]] = cls.mark_cells_for_removal(
-            current_state.board, matches
+        marked_cells: list[list[Element]] = self.mark_cells_for_removal(
+            self.board, matches
         )
 
         # 2. Apply graviation
-        gravity_applied_cells = cls.apply_gravity(
-            marked_cells, current_state.board.size
+        gravity_applied_cells = self.apply_gravity(
+            marked_cells, self.board.size
         )
 
         # 3. Update score
         removed_count: int = reduce(lambda x, y: x + y.length, matches)
-        new_score: int = current_state.score + cls.calculate_score(removed_count)
+        new_score: int = self.score + self.calculate_score(removed_count)
 
         return BoardState(
-            board=Board(size=current_state.board.size, cells=gravity_applied_cells),
+            board=Board(size=self.board.size, cells=gravity_applied_cells),
             score=new_score,
         )
 
@@ -270,21 +213,75 @@ class Game:
     def calculate_score(removed_count: int) -> int:
         return removed_count * 10
 
-    @classmethod
-    def fill_empty_spaces(cls, current_state: BoardState) -> BoardState:
-        if not current_state.board.cells:
-            return current_state
+    def fill_empty_spaces(self, symbols) -> 'BoardState':
+        if not self.board.cells:
+            return self
 
-        new_cells: list[list[Element]] = deepcopy(current_state.board.cells)
+        new_cells: list[list[Element]] = deepcopy(self.board.cells)
 
-        for row in range(current_state.board.size):
-            for col in range(current_state.board.size):
+        for row in range(self.board.size):
+            for col in range(self.board.size):
                 if new_cells[row][col].symbol == Element.EMPTY:
-                    new_cells[row][col] = Element(random.choice(cls.SYMBOLS))
+                    new_cells[row][col] = Element(random.choice(symbols))
 
         return BoardState(
-            board=Board(size=current_state.board.size, cells=new_cells),
-            score=current_state.score,
+            board=Board(size=self.board.size, cells=new_cells),
+            score=self.score,
+        )
+
+
+class Game:
+    SYMBOLS = ["A", "B", "C", "D", "E", "F"]
+
+    @staticmethod
+    def draw(board: Board):
+        print("   0 1 2 3 4 5 6 7")
+        for i in range(8):
+            print(i, " ", end="")
+            for j in range(8):
+                print(board.cells[i][j].symbol, end=" ")
+            print()
+        print()
+
+    @staticmethod
+    def clone_board(board: Board) -> Board:
+        b = Board(board.size)
+        for i in range(board.size):
+            for j in range(board.size):
+                b.cells[i][j] = board.cells[i][j]
+        return b
+
+    @staticmethod
+    def read_move(board_state: BoardState):
+        inp = input("> ")
+        if inp == "q":
+            sys.exit(0)
+
+        board = Game.clone_board(board_state.board)
+        coords: list[str] = inp.split(" ")
+        x = int(coords[1])
+        y = int(coords[0])
+        x1 = int(coords[3])
+        y1 = int(coords[2])
+        e: Element = board.cells[x][y]
+        board.cells[x][y] = board.cells[x1][y1]
+        board.cells[x1][y1] = e
+
+        return BoardState(board, board_state.score)
+
+    @classmethod
+    def initialize_game(cls, board_size: int = 8) -> BoardState:
+        board = Board(
+            size=8,
+            cells=[
+                [Element(random.choice(cls.SYMBOLS)) for _ in range(8)]
+                for _ in range(8)
+            ],
+        )
+        return (
+            BoardState(board=board, score=0)
+            .fill_empty_spaces(cls.SYMBOLS)
+            .process_cascade(cls.SYMBOLS)
         )
 
 
