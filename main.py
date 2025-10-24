@@ -50,6 +50,9 @@ class BoardState:
         if not matches:
             return self
 
+        # Вместо того, чтобы делать wrapper Pipe я решил переместить методы работы с доской в данный класс
+        # Поскольку каждый из методов ниже возвращает объект BoardState, мы
+        # можем легко композировать методы этого класса без дополнительного метода Pipe
         return (
             self
             .remove_matches(matches)
