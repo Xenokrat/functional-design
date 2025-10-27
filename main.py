@@ -7,6 +7,9 @@ from dataclasses import dataclass
 import random
 
 
+DEBUG = True
+
+
 class MatchDirection(Enum):
     Horizontal = auto()
     Vertical = auto()
@@ -45,6 +48,22 @@ class BoardState:
     board: Board
     score: int
 
+    def draw(self, msg: str | None = None, debug_mode: bool = False) -> 'BoardState':
+        if not debug_mode:
+            return self
+
+        if msg:
+            print(msg)
+        board = self.board
+        print("   0 1 2 3 4 5 6 7")
+        for i in range(8):
+            print(i, " ", end="")
+            for j in range(8):
+                print(board.cells[i][j].symbol, end=" ")
+            print()
+        print()
+        return self
+
     def process_cascade(self, symbols) -> 'BoardState':
         matches = self.find_matches(self.board)
         if not matches:
@@ -55,9 +74,13 @@ class BoardState:
         # можем легко композировать методы этого класса без дополнительного метода Pipe
         return (
             self
+            .draw("Init Board", debug_mode = DEBUG)
             .remove_matches(matches)
+            .draw("Remove Matches", debug_mode = DEBUG)
             .fill_empty_spaces(symbols)
+            .draw("Fill Empty Spaces", debug_mode = DEBUG)
             .process_cascade(symbols)
+            .draw("Result", debug_mode = DEBUG)
         )
 
     def find_matches(cls, board: Board) -> list[Match]:
@@ -169,7 +192,7 @@ class BoardState:
         )
 
         # 3. Update score
-        removed_count: int = reduce(lambda x, y: x + y.length, matches)
+        removed_count: int = reduce(lambda x, y: x + y.length, matches, 0)
         new_score: int = self.score + self.calculate_score(removed_count)
 
         return BoardState(
@@ -233,18 +256,28 @@ class BoardState:
         )
 
 
+def process_cascade(board_state: BoardState, symbols: list[str], debug_mode = False) -> BoardState:
+    matches = board_state.find_matches(board_state.board)
+    if not matches:
+        return board_state
+
+    return (
+        board_state
+        .draw("Init Board", debug_mode = DEBUG)
+        .remove_matches(matches)
+        .draw("Remove Matches", debug_mode = DEBUG)
+        .fill_empty_spaces(symbols)
+        .draw("Fill Empty Spaces", debug_mode = DEBUG)
+        .process_cascade(symbols)
+        .draw("Result", debug_mode = DEBUG)
+    )
+
 class Game:
     SYMBOLS = ["A", "B", "C", "D", "E", "F"]
 
     @staticmethod
-    def draw(board: Board):
-        print("   0 1 2 3 4 5 6 7")
-        for i in range(8):
-            print(i, " ", end="")
-            for j in range(8):
-                print(board.cells[i][j].symbol, end=" ")
-            print()
-        print()
+    def draw(board_state: BoardState):
+        board_state.draw()
 
     @staticmethod
     def clone_board(board: Board) -> Board:
@@ -283,7 +316,6 @@ class Game:
         )
         return (
             BoardState(board=board, score=0)
-            .fill_empty_spaces(cls.SYMBOLS)
             .process_cascade(cls.SYMBOLS)
         )
 
@@ -291,7 +323,7 @@ class Game:
 def main():
     bs: BoardState = Game.initialize_game()
     while True:
-        Game.draw(bs.board)
+        Game.draw(bs)
         bs = Game.read_move(bs)
 
 
