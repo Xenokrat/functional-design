@@ -4,7 +4,7 @@ from copy import deepcopy
 from functools import reduce
 
 from enum import StrEnum, Enum, auto
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class Element(StrEnum):
@@ -33,7 +33,7 @@ class Match:
 @dataclass
 class Board:
     size: int
-    cells: list[list[Element]] = []
+    cells: list[list[Element]] = field(default_factory=list)
 
     def __post_init__(self):
         if not self.cells:
@@ -47,6 +47,18 @@ class Board:
 class BoardState:
     board: Board
     score: int
+
+
+class Pipe:
+    def __init__(self, value):
+        self.value = value
+
+    def __or__(self, func):
+        self.value = func(self.value)
+        return self
+
+    def result(self):
+        return self.value
 
 
 def draw(board: Board, msg: str | None = None):
@@ -99,7 +111,11 @@ def initialize_game(board_size: int = 8) -> BoardState:
             for _ in range(board_size)
         ],
     )
-    return BoardState(board=board, score=0)
+    return (
+        Pipe(BoardState(board=board, score=0))
+        | fill_empty_spaces
+        | process_cascade
+    ).result()
 
 
 
