@@ -50,15 +50,21 @@ class BoardState:
 
 
 class Pipe:
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
 
     def __or__(self, func):
-        self.value = func(self.value)
+        result = func(*self.args, **self.kwargs)
+        if isinstance(result, tuple):
+            self.args = result
+        else:
+            self.args = (result,)
+        self.kwargs = {}
         return self
 
     def result(self):
-        return self.value
+        return self.args[0]
 
 
 def draw(board: Board, msg: str | None = None):
@@ -295,9 +301,12 @@ def process_cascade(board_state: BoardState) -> BoardState:
     if not matches:
         return board_state
 
-    new_state1 = remove_matches(board_state, matches)
-    new_state2 = fill_empty_spaces(new_state1)
-    return process_cascade(new_state2)
+    return (
+        Pipe(board_state)
+        | (lambda bs: remove_matches(bs, matches))
+        | fill_empty_spaces
+        | process_cascade
+    ).result()
 
 
 if __name__ == "__main__":
