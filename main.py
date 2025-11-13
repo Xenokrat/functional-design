@@ -2,6 +2,7 @@ import sys
 import random
 from copy import deepcopy
 from functools import reduce
+from typing import Callable
 
 from enum import StrEnum, Enum, auto
 from dataclasses import dataclass, field
@@ -65,18 +66,6 @@ class Pipe:
 
     def result(self):
         return self.args[0]
-
-
-def draw(board: Board, msg: str | None = None):
-    if msg:
-        print(msg)
-    print("   0 1 2 3 4 5 6 7")
-    for i in range(8):
-        print(i, " ", end="")
-        for j in range(8):
-            print(board.cells[i][j].value, end=" ")
-        print()
-    print()
 
 
 def clone_board(board: Board) -> Board:
@@ -296,17 +285,41 @@ def fill_empty_spaces(board_state: BoardState) -> BoardState:
     )
 
 
+def build_pipeline(debug: bool) -> Callable[[BoardState], BoardState]:
+    return lambda bs: (
+        Pipe(bs)
+        | (lambda bs: draw(bs, debug))
+        | fill_empty_spaces
+        | (lambda bs: draw(bs, debug))
+        | process_cascade
+    ).result()
+
+
 def process_cascade(board_state: BoardState) -> BoardState:
+    DEBUG = True
+    pipeline = build_pipeline(DEBUG)
+
     matches = find_matches(board_state.board)
     if not matches:
         return board_state
 
-    return (
-        Pipe(board_state)
-        | (lambda bs: remove_matches(bs, matches))
-        | fill_empty_spaces
-        | process_cascade
-    ).result()
+    board_state = remove_matches(board_state, matches)
+    return pipeline(board_state)
+
+
+def draw(bs: BoardState, debug_mode: bool = False) -> BoardState:
+    if not debug_mode:
+        return bs
+
+    board = bs.board
+    print("   0 1 2 3 4 5 6 7")
+    for i in range(8):
+        print(i, " ", end="")
+        for j in range(8):
+            print(board.cells[i][j], end=" ")
+        print()
+    print()
+    return bs
 
 
 if __name__ == "__main__":
